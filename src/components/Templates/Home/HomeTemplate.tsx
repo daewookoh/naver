@@ -35,7 +35,7 @@ export const HomeTemplate = (props: Props) => {
           marginTop: 20,
         }}
       >
-        <Button {...props.autoPostButton} />
+        <Button type="primary" {...props.autoPostButton} />
       </Content>
 
       {/* 3. Footer Modules */}

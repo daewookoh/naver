@@ -1,7 +1,15 @@
 import { api } from "~/trpc/react";
+import { notification } from "antd";
 
 const useHomeContainer = () => {
-  const autoPostMutation = api.post.autoPost.useMutation();
+  const autoPostMutation = api.post.autoPost.useMutation({
+    onSuccess: () => {
+      notification.success({ message: "게시글이 성공적으로 등록되었습니다." });
+    },
+    onError: (error) => {
+      notification.error({ message: `에러가 발생했습니다: ${error.message}` });
+    },
+  });
 
   const generateRandomKoreanString = (length: number) => {
     let result = "";
@@ -21,7 +29,7 @@ const useHomeContainer = () => {
     autoPostMutation.mutate({ title: randomTitle, content: randomContent });
   };
 
-  return { handleAutoPost };
+  return { handleAutoPost, isLoading: autoPostMutation.isPending };
 };
 
 export default useHomeContainer;
