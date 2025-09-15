@@ -2,15 +2,13 @@ import { HomeContentModule } from "~/components/Modules/HomeContentModule/HomeCo
 import { Layout, Button } from "antd";
 import { Content, Footer, Header } from "antd/es/layout/layout";
 import { NamuNaverLoginButton } from "~/components/Components/NamuNaverLoginButton/NamuNaverLoginButton";
-import { useSession } from "next-auth/react";
 
 type Props = {
   homeContentModuleProps: React.ComponentProps<typeof HomeContentModule>;
+  autoPostButton: React.ComponentProps<typeof Button>;
 };
 
 export const HomeTemplate = (props: Props) => {
-  const { data: session } = useSession();
-
   return (
     <Layout style={{ height: "100%" }}>
       {/* 1. Header Modules */}
@@ -37,11 +35,7 @@ export const HomeTemplate = (props: Props) => {
           marginTop: 20,
         }}
       >
-        {session ? (
-          <Button type="primary">카페 글 자동등록</Button>
-        ) : (
-          <HomeContentModule {...props.homeContentModuleProps} />
-        )}
+        <Button {...props.autoPostButton} />
       </Content>
 
       {/* 3. Footer Modules */}

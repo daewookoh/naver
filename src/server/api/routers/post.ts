@@ -1,4 +1,5 @@
 import { z } from "zod";
+import axios from "axios";
 
 import {
   createTRPCRouter,
@@ -38,4 +39,23 @@ export const postRouter = createTRPCRouter({
   getSecretMessage: protectedProcedure.query(() => {
     return "you can now see this secret message!";
   }),
+
+  autoPost: publicProcedure
+    .input(z.object({ title: z.string(), content: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        const response = await axios.post(
+          "https://jsonplaceholder.typicode.com/posts",
+          {
+            title: input.title,
+            body: input.content,
+            userId: 1,
+          },
+        );
+        return response.data;
+      } catch (error) {
+        console.error(error);
+        throw new Error("Failed to create post");
+      }
+    }),
 });
