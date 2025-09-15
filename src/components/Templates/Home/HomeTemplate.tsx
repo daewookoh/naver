@@ -1,5 +1,6 @@
 import { HomeContentModule } from "~/components/Modules/HomeContentModule/HomeContentModule";
 import { Layout, Button } from "antd";
+import { CloudUploadOutlined } from "@ant-design/icons";
 import { Content, Footer, Header } from "antd/es/layout/layout";
 import { NamuNaverLoginButton } from "~/components/Components/NamuNaverLoginButton/NamuNaverLoginButton";
 
@@ -35,7 +36,13 @@ export const HomeTemplate = (props: Props) => {
           marginTop: 20,
         }}
       >
-        <Button type="primary" {...props.autoPostButton} />
+        <Button
+          type="primary"
+          icon={<CloudUploadOutlined />}
+          {...props.autoPostButton}
+        >
+          {props.autoPostButton.loading ? "등록 중..." : "카페 글 자동등록"}
+        </Button>
       </Content>
 
       {/* 3. Footer Modules */}

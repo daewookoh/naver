@@ -10,7 +10,6 @@ export const HomeContainer = () => {
     homeContentModuleProps: { title: "HomeContentModule" },
     autoPostButton: {
       onClick: handleAutoPost,
-      children: "카페 글 자동등록",
       loading: isLoading,
     },
   };
