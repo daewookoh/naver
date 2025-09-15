@@ -62,10 +62,18 @@ export const postRouter = createTRPCRouter({
       const apiUrl = `https://openapi.naver.com/v1/cafe/${cafeId}/menu/${menuId}/articles`;
 
       try {
-        // Naver Cafe API typically expects x-www-form-urlencoded for article creation
+        // Naver Cafe API typically expects x-www-form-urlencoded for article creation.
+        // As per instructions, values need to be double URL-encoded: first UTF-8, then MS949.
+        // In JavaScript, `encodeURIComponent` performs UTF-8 URL encoding.
+        // Applying `encodeURIComponent` twice achieves the desired result because the second encoding
+        // operates on the already UTF-8 URL-encoded string (which contains only ASCII characters like '%', 'E', 'C', etc.).
+        // For these ASCII characters, UTF-8 and MS949 encodings behave identically when URL-encoding.
+        const encodedTitle = encodeURIComponent(input.title);
+        const encodedContent = encodeURIComponent(input.content);
+
         const params = new URLSearchParams();
-        params.append("subject", input.title); // Naver API uses 'subject' for title
-        params.append("content", input.content);
+        params.append("subject", encodedTitle); // Naver API uses 'subject' for title
+        params.append("content", encodedContent);
 
         const response = await axios.post(
           apiUrl,
