@@ -1,7 +1,9 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
+import NaverProvider from "next-auth/providers/naver";
 
+import { env } from "~/env";
 import { db } from "~/server/db";
 
 /**
@@ -33,6 +35,10 @@ declare module "next-auth" {
 export const authConfig = {
   providers: [
     DiscordProvider,
+    NaverProvider({
+      clientId: env.NAVER_CLIENT_ID,
+      clientSecret: env.NAVER_CLIENT_SECRET,
+    }),
     /**
      * ...add more providers here.
      *
