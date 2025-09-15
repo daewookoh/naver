@@ -3,6 +3,7 @@ import { Layout, Button } from "antd";
 import { CloudUploadOutlined } from "@ant-design/icons";
 import { Content, Footer, Header } from "antd/es/layout/layout";
 import { NamuNaverLoginButton } from "~/components/Components/NamuNaverLoginButton/NamuNaverLoginButton";
+import { useSession } from "next-auth/react";
 
 type Props = {
   homeContentModuleProps: React.ComponentProps<typeof HomeContentModule>;
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export const HomeTemplate = (props: Props) => {
+  const { data: session } = useSession();
+
   return (
     <Layout style={{ height: "100%" }}>
       {/* 1. Header Modules */}
@@ -36,13 +39,15 @@ export const HomeTemplate = (props: Props) => {
           marginTop: 20,
         }}
       >
-        <Button
-          type="primary"
-          icon={<CloudUploadOutlined />}
-          {...props.autoPostButton}
-        >
-          {props.autoPostButton.loading ? "등록 중..." : "카페 글 자동등록"}
-        </Button>
+        {session && (
+          <Button
+            type="primary"
+            icon={<CloudUploadOutlined />}
+            {...props.autoPostButton}
+          >
+            {props.autoPostButton.loading ? "등록 중..." : "카페 글 자동등록"}
+          </Button>
+        )}
       </Content>
 
       {/* 3. Footer Modules */}
