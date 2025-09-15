@@ -40,22 +40,64 @@ export const postRouter = createTRPCRouter({
     return "you can now see this secret message!";
   }),
 
-  autoPost: publicProcedure
+  autoPost: protectedProcedure
     .input(z.object({ title: z.string(), content: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Get the user's Naver OAuth account
+      const naverAccount = await ctx.db.account.findFirst({
+        where: {
+          userId: ctx.session.user.id,
+          provider: "naver",
+        },
+      });
+
+      if (!naverAccount?.access_token) {
+        throw new Error(
+          "No Naver OAuth access token found. Please log in with Naver first.",
+        );
+      }
+
+      const cafeId = "28254417"; // Provided Cafe ID
+      const menuId = "283"; // Provided Menu ID
+      const apiUrl = `https://openapi.naver.com/v1/cafe/${cafeId}/menu/${menuId}/articles`;
+
       try {
+        // Naver Cafe API typically expects x-www-form-urlencoded for article creation
+        const params = new URLSearchParams();
+        params.append("subject", input.title); // Naver API uses 'subject' for title
+        params.append("content", input.content);
+
         const response = await axios.post(
-          "https://jsonplaceholder.typicode.com/posts",
+          apiUrl,
+          params.toString(), // Send the URLSearchParams as a string
           {
-            title: input.title,
-            body: input.content,
-            userId: 1,
+            headers: {
+              Authorization: `Bearer ${naverAccount.access_token}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
           },
         );
         return response.data;
       } catch (error) {
-        console.error(error);
-        throw new Error("Failed to create post");
+        console.error("Failed to create Naver Cafe post:", error);
+        if (axios.isAxiosError(error) && error.response) {
+          console.error("Naver API Error Response Data:", error.response.data);
+
+          // If token is expired, try to refresh it
+          if (error.response.status === 401) {
+            throw new Error(
+              "Naver OAuth token has expired. Please log in again with Naver.",
+            );
+          }
+
+          // Provide more specific error message from Naver API if available
+          throw new Error(
+            `Failed to create Naver Cafe post: ${JSON.stringify(error.response.data)}`,
+          );
+        }
+        throw new Error(
+          "Failed to create Naver Cafe post due to an unexpected error.",
+        );
       }
     }),
 });
