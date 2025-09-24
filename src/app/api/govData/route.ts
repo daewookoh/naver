@@ -169,6 +169,7 @@ async function upsertAnnouncement(
       where: { itemId: formattedItemId },
       update: {
         itemId: formattedItemId,
+        departmentKey,
         title,
         dataContents,
         applicationStartDate,
@@ -185,6 +186,7 @@ async function upsertAnnouncement(
       },
       create: {
         itemId: formattedItemId,
+        departmentKey,
         title,
         dataContents,
         applicationStartDate,

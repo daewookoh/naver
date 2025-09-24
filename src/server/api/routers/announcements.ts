@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import {
+  getDepartmentFullName,
+  isValidDepartmentKey,
+} from "~/utils/departments";
 
 export const announcementsRouter = createTRPCRouter({
   getAnnouncements: publicProcedure
@@ -10,6 +14,7 @@ export const announcementsRouter = createTRPCRouter({
         search: z.string().optional(),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
+        departmentKey: z.string().optional(), // 부서 키 추가
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -18,10 +23,19 @@ export const announcementsRouter = createTRPCRouter({
       // 검색 조건 구성
       const where: any = {};
 
+      console.log("=== ANNOUNCEMENTS API CALL ===");
       console.log("Search parameters:", {
         search: input.search,
         startDate: input.startDate,
         endDate: input.endDate,
+        departmentKey: input.departmentKey,
+      });
+      console.log("Department key validation:", {
+        key: input.departmentKey,
+        isValid: isValidDepartmentKey(input.departmentKey || ""),
+        fullName: input.departmentKey
+          ? getDepartmentFullName(input.departmentKey)
+          : "N/A",
       });
 
       if (input.search) {
@@ -64,6 +78,30 @@ export const announcementsRouter = createTRPCRouter({
         };
       }
 
+      // 부서 키 필터링 추가
+      if (input.departmentKey) {
+        if (isValidDepartmentKey(input.departmentKey)) {
+          where.departmentKey = input.departmentKey;
+          console.log("=== DEPARTMENT FILTER APPLIED ===");
+          console.log("Department key:", input.departmentKey);
+          console.log(
+            "Department name:",
+            getDepartmentFullName(input.departmentKey),
+          );
+          console.log("Filter condition:", where.departmentKey);
+          console.log("=====================================");
+        } else {
+          console.warn("Invalid department key:", input.departmentKey);
+        }
+      } else {
+        console.log("=== NO DEPARTMENT FILTER ===");
+        console.log("No departmentKey provided, returning all data");
+        console.log("=====================================");
+      }
+
+      // 최종 where 조건 로깅
+      console.log("Final where condition:", JSON.stringify(where, null, 2));
+
       // 총 개수 조회
       const totalCount = await ctx.db.businessAnnouncement.count({ where });
       console.log("Total count:", totalCount);
@@ -77,7 +115,11 @@ export const announcementsRouter = createTRPCRouter({
       });
 
       console.log("Found announcements:", announcements.length);
-      if (input.search && announcements.length > 0) {
+      if (announcements.length > 0) {
+        console.log(
+          "Sample announcement itemIds:",
+          announcements.slice(0, 3).map((a) => a.itemId),
+        );
         console.log(
           "Sample announcement titles:",
           announcements.slice(0, 3).map((a) => a.title),
@@ -96,4 +138,27 @@ export const announcementsRouter = createTRPCRouter({
         },
       };
     }),
+
+  // 데이터베이스에 있는 부서별 데이터 개수 확인
+  getDepartmentStats: publicProcedure.query(async ({ ctx }) => {
+    const stats = await ctx.db.businessAnnouncement.groupBy({
+      by: ["departmentKey"],
+      _count: {
+        departmentKey: true,
+      },
+    });
+
+    const departmentStats = stats.map((stat) => ({
+      departmentKey: stat.departmentKey,
+      count: stat._count.departmentKey,
+    }));
+
+    console.log("=== DATABASE STATS ===");
+    console.log("Department breakdown:", departmentStats);
+
+    return {
+      success: true,
+      data: departmentStats,
+    };
+  }),
 });

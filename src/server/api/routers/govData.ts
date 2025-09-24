@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  isValidDepartmentKey,
+  getDepartmentFullName,
+} from "~/utils/departments";
 
 // YYYY-MM-DD 포맷
 function formatDate(date: Date): string {
@@ -16,10 +20,18 @@ function addOneDay(date: Date): Date {
 }
 
 // 외부 API 호출 (startDate, endDate 동일하게)
-async function fetchAnnouncements(date: string): Promise<any[]> {
-  // 실제 API URL로 교체 필요
-  const apiUrl = `https://apis.data.go.kr/1421000/mssBizService_v2/getbizList_v2?serviceKey=${process.env.NEXT_PUBLIC_DATA_GO_KR_SERVICE_KEY}&pageNo=1&numOfRows=100&startDate=${date}&endDate=${date}`;
-  console.log(apiUrl);
+async function fetchAnnouncements(
+  date: string,
+  departmentKey: string,
+): Promise<any[]> {
+  // departmentKey에 따라 API URL 구성
+  // 실제 API는 부서별로 다른 엔드포인트가 아닐 수 있음
+  // 부서 정보를 파라미터로 전달하는 방식으로 변경
+  const apiUrl = `https://apis.data.go.kr/1421000/mssBizService_v2/getbizList_v2?serviceKey=${process.env.NEXT_PUBLIC_DATA_GO_KR_SERVICE_KEY}&pageNo=1&numOfRows=100&startDate=${date}&endDate=${date}&departmentKey=${departmentKey}`;
+  console.log("=== API CALL DEBUG ===");
+  console.log("Department Key:", departmentKey);
+  console.log("API URL:", apiUrl);
+  console.log("Date:", date);
   const response = await fetch(apiUrl, {
     headers: {
       Accept: "*/*",
@@ -86,7 +98,15 @@ async function fetchAnnouncements(date: string): Promise<any[]> {
     Array.isArray(itemsData) ? itemsData : itemsData ? [itemsData] : []
   ).filter((item) => item != null);
 
-  console.log("API Response items:", JSON.stringify(items, null, 2));
+  console.log("API Response items count:", items.length);
+  console.log(
+    "Sample items:",
+    items.slice(0, 2).map((item) => ({
+      itemId: item.itemId,
+      title: item.title?.substring(0, 50) + "...",
+      departmentKey: departmentKey,
+    })),
+  );
 
   return items;
 }
@@ -170,6 +190,7 @@ async function upsertAnnouncement(
       where: { itemId: formattedItemId },
       update: {
         itemId: formattedItemId,
+        departmentKey,
         title,
         dataContents,
         applicationStartDate,
@@ -186,6 +207,7 @@ async function upsertAnnouncement(
       },
       create: {
         itemId: formattedItemId,
+        departmentKey,
         title,
         dataContents,
         applicationStartDate,
@@ -217,6 +239,15 @@ export const govDataRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // 부서 키 유효성 검증
+      if (!isValidDepartmentKey(input.departmentKey)) {
+        throw new Error(`Invalid department key: ${input.departmentKey}`);
+      }
+
+      console.log(
+        `Starting data sync for ${getDepartmentFullName(input.departmentKey)} (${input.departmentKey})`,
+      );
+
       let currentDate: Date;
       let endDate: Date;
 
@@ -243,8 +274,8 @@ export const govDataRouter = createTRPCRouter({
       while (currentDate <= endDate) {
         const dateStr = formatDate(currentDate);
         try {
-          // API 호출
-          const items = await fetchAnnouncements(dateStr);
+          // API 호출 - departmentKey 전달
+          const items = await fetchAnnouncements(dateStr, input.departmentKey);
           // DB 저장 (upsert) - 선택된 부서 key 사용
           const results = await Promise.all(
             items.map((item) =>

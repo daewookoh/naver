@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 interface Announcement {
   id: number;
   itemId: string;
+  departmentKey: string;
   title: string;
   dataContents?: string;
   applicationStartDate?: string;
@@ -35,7 +36,7 @@ interface ApiResponse {
   };
 }
 
-export const useHomeContainer = () => {
+export const useHomeContainer = (departmentKey?: string) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<
     [dayjs.Dayjs | null, dayjs.Dayjs | null]
@@ -65,8 +66,24 @@ export const useHomeContainer = () => {
       params.append("endDate", dateRange[1].format("YYYY-MM-DD"));
     }
 
+    if (departmentKey) {
+      params.append("departmentKey", departmentKey);
+      console.log("=== FRONTEND API CALL ===");
+      console.log("Department key being sent:", departmentKey);
+      console.log("Department key type:", typeof departmentKey);
+      console.log("Department key length:", departmentKey.length);
+      console.log("Department key validation:", {
+        key: departmentKey,
+        isValid: departmentKey === "1421000" || departmentKey === "1422000",
+      });
+    } else {
+      console.log("=== NO DEPARTMENT KEY ===");
+      console.log("No departmentKey provided to API call");
+    }
+
     const url = `/api/announcements?${params.toString()}`;
     console.log("Fetching URL:", url);
+    console.log("Full params:", Object.fromEntries(params.entries()));
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -87,8 +104,11 @@ export const useHomeContainer = () => {
     isFetchingNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["announcements", searchTerm, dateRange],
+    queryKey: ["announcements", searchTerm, dateRange, departmentKey],
     queryFn: fetchAnnouncements,
+    enabled: !!departmentKey, // departmentKey가 있을 때만 쿼리 실행
+    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
+    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
     getNextPageParam: (lastPage) => {
       return lastPage.pagination.hasNextPage
         ? lastPage.pagination.page + 1

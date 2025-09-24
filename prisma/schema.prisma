@@ -76,6 +76,7 @@ model VerificationToken {
 model BusinessAnnouncement {
     id                   Int      @id @default(autoincrement())
     itemId               String   @unique // 공고 고유 ID
+    departmentKey        String // 부서 키
     title                String // 공고 제목
     dataContents         String? // 공고 내용
     applicationStartDate String? // 접수 시작일
@@ -92,6 +93,7 @@ model BusinessAnnouncement {
     regDate              DateTime @db.Date
 
     @@index([itemId])
+    @@index([departmentKey, regDate(sort: Desc)])
     @@index([applicationStartDate])
     @@index([applicationEndDate])
 }

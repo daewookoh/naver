@@ -6,6 +6,12 @@ import { useCallback, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useHomeContainer } from "~/containers/HomeContainer/common/hooks/useHomeContainer";
 import { api } from "~/trpc/react";
+import {
+  getDepartmentFromItemId,
+  getDepartmentFromKey,
+  getAllDepartments,
+  getDepartmentFullName,
+} from "~/utils/departments";
 
 type Props = {
   searchStartDate?: string;
@@ -19,6 +25,13 @@ export const HomeContentModule = (props: Props) => {
   const [activeTab, setActiveTab] = useState(props.activeTab || "1421000");
   const [postingItems, setPostingItems] = useState<Set<string>>(new Set());
   const { data: session } = useSession();
+
+  // props.activeTab이 변경되면 로컬 상태도 업데이트
+  useEffect(() => {
+    if (props.activeTab) {
+      setActiveTab(props.activeTab);
+    }
+  }, [props.activeTab]);
 
   const {
     searchTerm,
@@ -35,9 +48,22 @@ export const HomeContentModule = (props: Props) => {
     onClear,
     dateRange,
     setDateRange,
-  } = useHomeContainer();
+  } = useHomeContainer(activeTab); // activeTab을 부서 키로 전달
+
+  // 디버깅: activeTab 변경 시 로그 출력
+  useEffect(() => {
+    console.log("=== TAB CHANGE DEBUG ===");
+    console.log("Active tab changed:", activeTab);
+    console.log("Current announcements count:", announcements.length);
+    console.log(
+      "Sample itemIds:",
+      announcements.slice(0, 3).map((a) => a.itemId),
+    );
+    console.log("=========================");
+  }, [activeTab, announcements.length]);
 
   const autoPostMutation = api.naverPost.autoPost.useMutation();
+  const departmentStatsQuery = api.announcements.getDepartmentStats.useQuery();
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
@@ -58,34 +84,10 @@ export const HomeContentModule = (props: Props) => {
     setPostingItems((prev) => new Set(prev).add(itemId));
 
     try {
-      // itemId에서 부서 정보 추출
-      const getDepartmentFromItemId = (itemId: string) => {
-        // itemId가 "departmentKey_originalId" 형태인 경우
-        if (itemId.includes("_")) {
-          const parts = itemId.split("_");
-          const departmentKey = parts[0];
-
-          // 부서 키가 유효한지 확인
-          if (departmentKey) {
-            // 부서 키에 따른 부서명 매핑
-            const departmentMap: Record<string, string> = {
-              "1421000": "중기부",
-              "1422000": "기재부",
-              "1423000": "과기부",
-              "1424000": "환경부",
-              "1425000": "보건부",
-              // 필요에 따라 추가 부서 매핑
-            };
-
-            return departmentMap[departmentKey] || "중기부"; // 기본값은 중기부
-          }
-        }
-
-        // itemId에 부서 정보가 없는 경우 기본값
-        return "중기부";
-      };
-
-      const department = getDepartmentFromItemId(itemId);
+      // departmentKey에서 부서 정보 추출
+      const department = item.departmentKey
+        ? getDepartmentFromKey(item.departmentKey)
+        : getDepartmentFromItemId(itemId);
 
       // 네이버 카페 등록을 위한 데이터 준비
       const title = `[${department}] ${item.title}`; // 말머리를 제목에 직접 추가
@@ -156,35 +158,127 @@ export const HomeContentModule = (props: Props) => {
 
   if (isLoading && !announcements.length) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spin size="large" tip="로딩 중..." />
+      <div className="mx-auto w-full max-w-[1200px] p-4">
+        {/* 탭 영역 */}
+        <div className="mb-6">
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => {
+              console.log("=== TAB CHANGE ===");
+              console.log("Previous tab:", activeTab);
+              console.log("New tab:", key);
+              setActiveTab(key);
+              props.onTabChange?.(key);
+              // 탭 변경 시 데이터 새로 로드 (setTimeout 제거)
+              console.log("Refetching data for tab:", key);
+              refetch();
+            }}
+            items={getAllDepartments().map((dept) => ({
+              key: dept.key,
+              label: dept.fullName,
+            }))}
+            className="w-full"
+          />
+        </div>
+
+        <div className="flex h-64 items-center justify-center">
+          <Spin size="large" tip="로딩 중..." />
+        </div>
+      </div>
+    );
+  }
+
+  // 해당 부서에 데이터가 없는 경우 메시지 표시
+  if (!isLoading && announcements.length === 0 && !isError) {
+    const departmentName = getDepartmentFullName(activeTab);
+    return (
+      <div className="mx-auto w-full max-w-[1200px] p-4">
+        {/* 탭 영역 */}
+        <div className="mb-6">
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => {
+              setActiveTab(key);
+              props.onTabChange?.(key);
+              // 탭 변경 시 데이터 새로 로드
+              refetch();
+            }}
+            items={getAllDepartments().map((dept) => ({
+              key: dept.key,
+              label: dept.fullName,
+            }))}
+            className="w-full"
+          />
+        </div>
+
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 text-lg font-semibold text-gray-600">
+              {departmentName} 데이터가 없습니다
+            </div>
+            <div className="text-sm text-gray-500">
+              상단의 &quot;수집하기&quot; 버튼을 클릭하여 {departmentName}{" "}
+              데이터를 수집해주세요.
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="mx-auto w-full max-w-[1200px] p-4">
-      {/* <Title level={2} className="mb-6">
-        정부 사업 공고
-      </Title> */}
-
       {/* 탭 영역 */}
       <div className="mb-6">
         <Tabs
           activeKey={activeTab}
           onChange={(key) => {
+            console.log("=== TAB CHANGE ===");
+            console.log("Previous tab:", activeTab);
+            console.log("New tab:", key);
             setActiveTab(key);
             props.onTabChange?.(key);
+            // 탭 변경 시 데이터 새로 로드
+            console.log("Refetching data for tab:", key);
+            refetch();
           }}
-          items={[
-            {
-              key: "1421000",
-              label: "중소벤처기업부",
-            },
-          ]}
+          items={getAllDepartments().map((dept) => ({
+            key: dept.key,
+            label: dept.fullName,
+          }))}
           className="w-full"
         />
       </div>
+
+      {/* 디버깅 정보 */}
+      {/* {departmentStatsQuery.data && (
+        <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+          <h3 className="mb-2 text-sm font-semibold text-yellow-800">
+            🔍 디버깅 정보
+          </h3>
+          <div className="text-xs text-yellow-700">
+            <div>현재 탭: {activeTab}</div>
+            <div>데이터베이스 부서별 데이터:</div>
+            <ul className="ml-4">
+              {departmentStatsQuery.data.data.map((stat, idx) => (
+                <li key={idx}>
+                  {stat.departmentKey}: {stat.count}개
+                </li>
+              ))}
+            </ul>
+            <div>현재 표시된 데이터 개수: {announcements.length}</div>
+            {announcements.length > 0 && (
+              <div>
+                샘플 itemIds:{" "}
+                {announcements
+                  .slice(0, 3)
+                  .map((a) => a.itemId)
+                  .join(", ")}
+              </div>
+            )}
+          </div>
+        </div>
+      )} */}
 
       {/* 검색 바 */}
       <div className="mb-6 rounded-lg bg-white p-4">
@@ -248,7 +342,10 @@ export const HomeContentModule = (props: Props) => {
                       <div className="text-lg font-semibold">{item.title}</div>
                       <div className="mt-1 text-[16px] text-gray-500">
                         담당부서: {item.writerPosition || "-"} | 공고번호:{" "}
-                        {item.itemId || "-"} | 신청기간:{" "}
+                        {item.itemId
+                          ? item.itemId.split("_")[1] || item.itemId
+                          : "-"}{" "}
+                        | 신청기간:{" "}
                         {item.applicationStartDate
                           ? item.applicationStartDate.slice(0, 10)
                           : ""}{" "}

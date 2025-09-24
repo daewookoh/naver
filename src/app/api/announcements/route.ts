@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "~/server/db";
+import {
+  isValidDepartmentKey,
+  getDepartmentFullName,
+} from "~/utils/departments";
 
 export async function GET(request: Request) {
   try {
@@ -9,13 +13,19 @@ export async function GET(request: Request) {
     const search = searchParams.get("search") || "";
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const departmentKey = searchParams.get("departmentKey");
 
     const skip = (page - 1) * limit;
 
     // 검색 조건 구성
     const where: any = {};
 
-    console.log("Search parameters:", { search, startDate, endDate });
+    console.log("Search parameters:", {
+      search,
+      startDate,
+      endDate,
+      departmentKey,
+    });
 
     if (search) {
       // 검색어 정리 (공백 제거, 특수문자 처리)
@@ -55,6 +65,24 @@ export async function GET(request: Request) {
         gte: new Date(startDate),
         lte: new Date(endDate),
       };
+    }
+
+    // 부서 키 필터링 추가
+    if (departmentKey) {
+      if (isValidDepartmentKey(departmentKey)) {
+        where.departmentKey = departmentKey;
+        console.log("=== DEPARTMENT FILTER APPLIED ===");
+        console.log("Department key:", departmentKey);
+        console.log("Department name:", getDepartmentFullName(departmentKey));
+        console.log("Filter condition:", where.departmentKey);
+        console.log("=====================================");
+      } else {
+        console.warn("Invalid department key:", departmentKey);
+      }
+    } else {
+      console.log("=== NO DEPARTMENT FILTER ===");
+      console.log("No departmentKey provided, returning all data");
+      console.log("=====================================");
     }
 
     // 총 개수 조회

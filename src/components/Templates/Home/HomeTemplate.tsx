@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import dayjs from "dayjs";
 import { useQueryClient } from "@tanstack/react-query";
+import { getAllDepartments } from "~/utils/departments";
 
 type Props = {
   homeContentModuleProps: React.ComponentProps<typeof HomeContentModule>;
@@ -15,10 +16,11 @@ type Props = {
 export const HomeTemplate = (props: Props) => {
   const { data: session } = useSession();
   const [searchStartDate, setSearchStartDate] = useState<dayjs.Dayjs | null>(
-    null,
+    dayjs(), // 오늘 날짜로 기본 설정
   );
-  const [activeTab, setActiveTab] = useState("1421000");
+  const [activeTab, setActiveTab] = useState("1421000"); // 중소벤처기업부
   const [isCollecting, setIsCollecting] = useState(false);
+  const [collectingProgress, setCollectingProgress] = useState("");
   const queryClient = useQueryClient();
 
   return (
@@ -56,23 +58,68 @@ export const HomeTemplate = (props: Props) => {
                 onClick={async () => {
                   if (searchStartDate) {
                     setIsCollecting(true);
+                    setCollectingProgress("");
                     const startDate = searchStartDate.format("YYYY-MM-DD");
+
                     try {
-                      const response = await fetch(
-                        `/api/govData?startDate=${startDate}&departmentKey=${activeTab}`,
-                      );
-                      const result = await response.json();
-                      if (result.success) {
-                        console.log("Data collection completed:", result);
-                        // 성공 시 announcements 쿼리 무효화하여 최신 데이터 가져오기
-                        queryClient.invalidateQueries({
-                          queryKey: ["announcements"],
-                        });
-                      } else {
-                        console.error("Data collection failed:", result.error);
+                      // 모든 부서에 대해 순차적으로 수집
+                      const departments = getAllDepartments();
+                      let totalSaved = 0;
+                      let processedDates: string[] = [];
+
+                      for (let i = 0; i < departments.length; i++) {
+                        const dept = departments[i];
+                        if (!dept) continue;
+
+                        setCollectingProgress(
+                          `${dept.fullName} 수집 중... (${i + 1}/${departments.length})`,
+                        );
+
+                        try {
+                          const response = await fetch(
+                            `/api/govData?startDate=${startDate}&departmentKey=${dept.key}`,
+                          );
+                          const result = await response.json();
+
+                          if (result.success) {
+                            console.log(`${dept.fullName} 수집 완료:`, result);
+                            totalSaved += result.totalSaved || 0;
+                            if (result.processedDates) {
+                              processedDates = [
+                                ...processedDates,
+                                ...result.processedDates,
+                              ];
+                            }
+                          } else {
+                            console.error(
+                              `${dept.fullName} 수집 실패:`,
+                              result.error,
+                            );
+                          }
+                        } catch (error) {
+                          console.error(
+                            `${dept.fullName} 수집 중 오류:`,
+                            error,
+                          );
+                        }
                       }
+
+                      setCollectingProgress(
+                        `수집 완료! 총 ${totalSaved}건 저장됨`,
+                      );
+
+                      // 성공 시 announcements 쿼리 무효화하여 최신 데이터 가져오기
+                      queryClient.invalidateQueries({
+                        queryKey: ["announcements"],
+                      });
+
+                      // 2초 후 진행 상황 메시지 초기화
+                      setTimeout(() => {
+                        setCollectingProgress("");
+                      }, 2000);
                     } catch (error) {
                       console.error("Error during data collection:", error);
+                      setCollectingProgress("수집 중 오류가 발생했습니다.");
                     } finally {
                       setIsCollecting(false);
                     }
@@ -87,6 +134,18 @@ export const HomeTemplate = (props: Props) => {
                   ? "수집 중..."
                   : "수집하기"}
               </Button>
+              {collectingProgress && (
+                <div
+                  style={{
+                    marginLeft: "10px",
+                    fontSize: "12px",
+                    color: "#1890ff",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {collectingProgress}
+                </div>
+              )}
             </>
           )}
           <NamuNaverLoginButton />
@@ -107,7 +166,10 @@ export const HomeTemplate = (props: Props) => {
           {...props.homeContentModuleProps}
           searchStartDate={searchStartDate?.format("YYYY-MM-DD")}
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={(key) => {
+            setActiveTab(key);
+            // 탭 변경은 HomeContentModule에서 처리하므로 여기서는 상태만 업데이트
+          }}
           onRefetch={() => {
             queryClient.invalidateQueries({ queryKey: ["announcements"] });
           }}
