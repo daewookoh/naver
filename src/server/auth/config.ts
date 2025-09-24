@@ -59,4 +59,31 @@ export const authConfig = {
       },
     }),
   },
+  events: {
+    signOut: async (message) => {
+      // message는 { session: AdapterSession | null } 또는 { token: JWT | null } 형태
+      const userId =
+        "session" in message ? message.session?.userId : message.token?.sub;
+      if (userId) {
+        try {
+          // 해당 유저의 Account와 Session 데이터를 병렬로 삭제
+          await Promise.all([
+            db.account.deleteMany({
+              where: { userId: userId },
+            }),
+            db.session.deleteMany({
+              where: { userId: userId },
+            }),
+          ]);
+
+          console.log(
+            `User ${userId} logout: Account and Session data deleted successfully`,
+          );
+        } catch (error) {
+          console.error("Error deleting user data on logout:", error);
+          // 에러가 발생해도 로그아웃은 계속 진행되도록 함
+        }
+      }
+    },
+  },
 } satisfies NextAuthConfig;

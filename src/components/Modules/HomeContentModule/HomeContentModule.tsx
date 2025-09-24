@@ -60,17 +60,12 @@ export const HomeContentModule = (props: Props) => {
     try {
       // 네이버 카페 등록을 위한 데이터 준비
       const title = item.title;
-      const content = `
-        <div>
-          <div>${item.dataContents || item.title}</div>
-          <p><strong>원문 링크:</strong> <a href="${item.viewUrl || ""}" target="_blank">${item.viewUrl || ""}</a></p>
-        </div>
-      `;
 
       // TRPC autoPost mutation 사용
       const result = await autoPostMutation.mutateAsync({
         title,
-        content,
+        content: item.dataContents || item.title,
+        viewUrl: item.viewUrl || "",
       });
 
       alert("카페 등록이 완료되었습니다.");
