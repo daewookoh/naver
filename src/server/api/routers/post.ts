@@ -83,16 +83,16 @@ export const postRouter = createTRPCRouter({
           token: naverAccount.access_token ? "Present" : "Missing",
         });
 
-        const content = `
-        <div>
-          <div>${encodeURIComponent(input.content)}</div>
-          ${input.viewUrl ? `<p><strong>${encodeURIComponent("원문 링크")}:</strong> <a href="${input.viewUrl}" target="_blank">${input.viewUrl}</a></p>` : ""}
-        </div>
-      `;
+        //   const content = `
+        //   <div>
+        //     <div>${encodeURIComponent(input.content)}</div>
+        //     ${input.viewUrl ? `<p><strong>${encodeURIComponent("원문 링크")}:</strong> <a href="${input.viewUrl}" target="_blank">${input.viewUrl}</a></p>` : ""}
+        //   </div>
+        // `;
 
         const params = new URLSearchParams();
         params.append("subject", encodeURIComponent(input.title)); // 원본 제목 그대로
-        params.append("content", content); // 원본 내용 그대로
+        params.append("content", input.viewUrl); // 원본 내용 그대로
 
         const response = await axios.post(apiUrl, params.toString(), {
           headers: {
