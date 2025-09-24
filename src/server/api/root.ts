@@ -1,4 +1,6 @@
 import { postRouter } from "~/server/api/routers/post";
+import { govDataRouter } from "~/server/api/routers/govData";
+import { announcementsRouter } from "~/server/api/routers/announcements";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -7,7 +9,9 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  post: postRouter,
+  naverPost: postRouter,
+  govData: govDataRouter,
+  announcements: announcementsRouter,
 });
 
 // export type definition of API

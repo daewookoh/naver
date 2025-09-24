@@ -29,7 +29,7 @@
     "@svgr/webpack": "^8.1.0",
     "@t3-oss/env-nextjs": "^0.12.0",
     "@tailwindcss/aspect-ratio": "^0.4.2",
-    "@tanstack/react-query": "^5.69.0",
+    "@tanstack/react-query": "^5.90.2",
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
@@ -37,6 +37,7 @@
     "aws-sdk": "^2.1692.0",
     "axios": "^1.12.2",
     "cryptr": "^6.3.0",
+    "dayjs": "^1.11.18",
     "jotai": "^2.14.0",
     "next": "^15.2.3",
     "next-auth": "5.0.0-beta.25",
@@ -44,6 +45,7 @@
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
     "superjson": "^2.2.1",
+    "xml2js": "^0.6.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -54,6 +56,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/uuid": "^10.0.0",
+    "@types/xml2js": "^0.4.14",
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.2.3",
     "postcss": "^8.5.3",

@@ -72,3 +72,26 @@ model VerificationToken {
 
     @@unique([identifier, token])
 }
+
+model BusinessAnnouncement {
+    id                   Int      @id @default(autoincrement())
+    itemId               String   @unique // 공고 고유 ID
+    title                String // 공고 제목
+    dataContents         String? // 공고 내용
+    applicationStartDate String? // 접수 시작일
+    applicationEndDate   String? // 접수 종료일
+    writerName           String? // 작성자 이름
+    writerPosition       String? // 작성자 직위
+    writerPhone          String? // 작성자 전화번호
+    writerEmail          String? // 작성자 이메일
+    viewUrl              String? // 공고 보기 URL
+    fileNames            String[] // 첨부파일명 배열 (JSON string으로 저장)
+    fileUrls             String[] // 첨부파일 URL 배열 (JSON string으로 저장)
+    createdAt            DateTime @default(now())
+    updatedAt            DateTime @updatedAt
+    regDate              DateTime @db.Date
+
+    @@index([itemId])
+    @@index([applicationStartDate])
+    @@index([applicationEndDate])
+}

@@ -1,63 +1,146 @@
-import { api } from "~/trpc/react";
-import { notification } from "antd";
+"use client";
 
-const useHomeContainer = () => {
-  const autoPostMutation = api.post.autoPost.useMutation({
-    onSuccess: () => {
-      notification.success({ message: "게시글이 성공적으로 등록되었습니다." });
+import { useState, useCallback } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import dayjs from "dayjs";
+import { api } from "~/trpc/react";
+
+interface Announcement {
+  id: number;
+  itemId: string;
+  title: string;
+  dataContents?: string;
+  applicationStartDate?: string;
+  applicationEndDate?: string;
+  writerName?: string;
+  writerPosition?: string;
+  writerPhone?: string;
+  writerEmail?: string;
+  viewUrl?: string;
+  fileNames: string[];
+  fileUrls: string[];
+  regDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data: Announcement[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  };
+}
+
+export const useHomeContainer = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState<
+    [dayjs.Dayjs | null, dayjs.Dayjs | null]
+  >([null, null]);
+  const [isAutoPosting, setIsAutoPosting] = useState(false);
+
+  const fetchAnnouncements = async ({
+    pageParam = 1,
+  }): Promise<ApiResponse> => {
+    // TRPC는 직접 호출이 아닌 useQuery를 사용해야 함
+    // 임시로 기존 API 호출 방식으로 되돌림
+    const params = new URLSearchParams({
+      page: pageParam.toString(),
+      limit: "30",
+    });
+
+    if (searchTerm) {
+      const cleanSearchTerm = searchTerm.trim();
+      if (cleanSearchTerm) {
+        params.append("search", cleanSearchTerm);
+        console.log("Search term:", cleanSearchTerm);
+      }
+    }
+
+    if (dateRange[0] && dateRange[1]) {
+      params.append("startDate", dateRange[0].format("YYYY-MM-DD"));
+      params.append("endDate", dateRange[1].format("YYYY-MM-DD"));
+    }
+
+    const url = `/api/announcements?${params.toString()}`;
+    console.log("Fetching URL:", url);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Failed to fetch announcements");
+    }
+    const result = await response.json();
+    console.log("API Response:", result);
+    return result;
+  };
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["announcements", searchTerm, dateRange],
+    queryFn: fetchAnnouncements,
+    getNextPageParam: (lastPage) => {
+      return lastPage.pagination.hasNextPage
+        ? lastPage.pagination.page + 1
+        : undefined;
     },
-    onError: (error) => {
-      notification.error({ message: `에러가 발생했습니다: ${error.message}` });
-    },
+    initialPageParam: 1,
   });
 
-  const generateRandomKoreanString = () => {
-    const list = [
-      "과기부 정책자금",
-      "행안부 정책자금",
-      "새로운 기회의 프로젝트",
-      "대한민국 정책자금",
-      "중소기업 정책자금",
-      "소상공인 정책자금",
-      "청년창업 정책자금",
-      "지역균형 정책자금",
-      "혁신성장 정책자금",
-      "수출기업 정책자금",
-      "기술개발 정책자금",
-      "환경개선 정책자금",
-      "문화예술 정책자금",
-      "농림축산 정책자금",
-      "해양수산 정책자금",
-      "복지증진 정책자금",
-      "스마트시티 정책자금",
-      "디지털전환 정책자금",
-      "탄소중립 정책자금",
-      "미래산업 정책자금",
-      "새로운 사업 기회",
-      "혁신적인 아이디어",
-      "미래를 위한 투자",
-      "성공적인 비즈니스",
-      "글로벌 시장 진출",
-      "디지털 혁신 프로젝트",
-      "지속 가능한 성장",
-      "동반 성장의 기회",
-      "창의적인 도전",
-      "기술 융합 프로젝트",
-    ];
+  const announcements = data?.pages.flatMap((page) => page.data) || [];
+  const totalCount = data?.pages[0]?.pagination?.total || 0;
 
-    return list[Math.floor(Math.random() * list.length)];
+  const onClear = useCallback(() => {
+    setSearchTerm("");
+    setDateRange([null, null]);
+  }, []);
+
+  const handleAutoPost = useCallback(async () => {
+    setIsAutoPosting(true);
+    try {
+      const response = await fetch("/api/govData");
+      const result = await response.json();
+
+      if (result.success) {
+        console.log("Data sync completed:", result);
+        // 성공 시 알림 또는 상태 업데이트
+      } else {
+        console.error("Data sync failed:", result.error);
+      }
+    } catch (error) {
+      console.error("Error during data sync:", error);
+    } finally {
+      setIsAutoPosting(false);
+    }
+  }, []);
+
+  return {
+    searchTerm,
+    setSearchTerm,
+    announcements,
+    isLoading,
+    isError,
+    error,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    totalCount,
+    onClear,
+    dateRange,
+    setDateRange,
+    handleAutoPost,
+    isAutoPosting,
   };
-
-  const handleAutoPost = () => {
-    const randomTitle = generateRandomKoreanString();
-    const randomContent = "https://www.naver.com";
-    autoPostMutation.mutate({
-      title: randomTitle ?? "랜덤 타이틀",
-      content: randomContent,
-    });
-  };
-
-  return { handleAutoPost, isLoading: autoPostMutation.isPending };
 };
-
-export default useHomeContainer;

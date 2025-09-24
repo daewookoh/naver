@@ -1,9 +1,12 @@
 import { HomeContentModule } from "~/components/Modules/HomeContentModule/HomeContentModule";
-import { Layout, Button } from "antd";
+import { Layout, Button, DatePicker } from "antd";
 import { CloudUploadOutlined } from "@ant-design/icons";
 import { Content, Header } from "antd/es/layout/layout";
 import { NamuNaverLoginButton } from "~/components/Components/NamuNaverLoginButton/NamuNaverLoginButton";
 import { useSession } from "next-auth/react";
+import { useState } from "react";
+import dayjs from "dayjs";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Props = {
   homeContentModuleProps: React.ComponentProps<typeof HomeContentModule>;
@@ -12,6 +15,12 @@ type Props = {
 
 export const HomeTemplate = (props: Props) => {
   const { data: session } = useSession();
+  const [searchStartDate, setSearchStartDate] = useState<dayjs.Dayjs | null>(
+    null,
+  );
+  const [activeTab, setActiveTab] = useState("1421000");
+  const [isCollecting, setIsCollecting] = useState(false);
+  const queryClient = useQueryClient();
 
   return (
     <Layout style={{ height: "100%" }}>
@@ -25,8 +34,64 @@ export const HomeTemplate = (props: Props) => {
           alignItems: "center",
         }}
       >
-        <h1 style={{ color: "white", fontSize: "20px" }}>My App</h1>
-        <NamuNaverLoginButton />
+        <h1 style={{ color: "white", fontSize: "20px" }}>정부지원 공고수집</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {session && (
+            <>
+              <DatePicker
+                placeholder="수집시작일자"
+                value={searchStartDate}
+                onChange={(date) => setSearchStartDate(date)}
+                disabledDate={(current) => {
+                  const thirtyDaysAgo = dayjs().subtract(30, "day");
+                  return (
+                    (current && current > dayjs().endOf("day")) ||
+                    (current && current < thirtyDaysAgo)
+                  );
+                }}
+                style={{ width: 140 }}
+              />
+              <Button
+                type="primary"
+                style={{ backgroundColor: "#1890ff", borderColor: "#1890ff" }}
+                onClick={async () => {
+                  if (searchStartDate) {
+                    setIsCollecting(true);
+                    const startDate = searchStartDate.format("YYYY-MM-DD");
+                    try {
+                      const response = await fetch(
+                        `/api/govData?startDate=${startDate}&departmentKey=${activeTab}`,
+                      );
+                      const result = await response.json();
+                      if (result.success) {
+                        console.log("Data collection completed:", result);
+                        // 성공 시 announcements 쿼리 무효화하여 최신 데이터 가져오기
+                        queryClient.invalidateQueries({
+                          queryKey: ["announcements"],
+                        });
+                      } else {
+                        console.error("Data collection failed:", result.error);
+                      }
+                    } catch (error) {
+                      console.error("Error during data collection:", error);
+                    } finally {
+                      setIsCollecting(false);
+                    }
+                  } else {
+                    // 기존 autoPostButton 로직 사용
+                    props.autoPostButton.onClick?.(undefined as any);
+                  }
+                }}
+                loading={isCollecting || props.autoPostButton.loading}
+              >
+                {isCollecting || props.autoPostButton.loading
+                  ? "수집 중..."
+                  : "수집하기"}
+              </Button>
+            </>
+          )}
+          <NamuNaverLoginButton />
+        </div>
       </Header>
 
       {/* 2. Content Modules */}
@@ -39,15 +104,15 @@ export const HomeTemplate = (props: Props) => {
           marginTop: 20,
         }}
       >
-        {session && (
-          <Button
-            type="primary"
-            icon={<CloudUploadOutlined />}
-            {...props.autoPostButton}
-          >
-            {props.autoPostButton.loading ? "등록 중..." : "카페 글 자동등록"}
-          </Button>
-        )}
+        <HomeContentModule
+          {...props.homeContentModuleProps}
+          searchStartDate={searchStartDate?.format("YYYY-MM-DD")}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onRefetch={() => {
+            queryClient.invalidateQueries({ queryKey: ["announcements"] });
+          }}
+        />
       </Content>
 
       {/* 3. Footer Modules */}
