@@ -1,6 +1,5 @@
 import { HomeContentModule } from "~/components/Modules/HomeContentModule/HomeContentModule";
 import { Layout, Button, DatePicker } from "antd";
-import { CloudUploadOutlined } from "@ant-design/icons";
 import { Content, Header } from "antd/es/layout/layout";
 import { NamuNaverLoginButton } from "~/components/Components/NamuNaverLoginButton/NamuNaverLoginButton";
 import { useSession } from "next-auth/react";

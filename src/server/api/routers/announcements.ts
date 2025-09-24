@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 export const announcementsRouter = createTRPCRouter({
   getAnnouncements: publicProcedure
@@ -22,10 +18,10 @@ export const announcementsRouter = createTRPCRouter({
       // 검색 조건 구성
       const where: any = {};
 
-      console.log("Search parameters:", { 
-        search: input.search, 
-        startDate: input.startDate, 
-        endDate: input.endDate 
+      console.log("Search parameters:", {
+        search: input.search,
+        startDate: input.startDate,
+        endDate: input.endDate,
       });
 
       if (input.search) {

@@ -54,7 +54,7 @@ async function fetchAnnouncements(date: string): Promise<any[]> {
     // Try to parse as JSON
     try {
       parsedData = JSON.parse(responseText);
-    } catch (error) {
+    } catch {
       console.error("Failed to parse API response as JSON:", responseText);
       throw new Error("Invalid JSON response from API");
     }
@@ -117,8 +117,6 @@ async function upsertAnnouncement(
     fileName,
     fileUrl,
     fileList,
-    attachmentList,
-    attachments,
   } = item;
 
   // 파일 정보 로깅

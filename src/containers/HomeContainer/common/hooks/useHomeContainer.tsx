@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { api } from "~/trpc/react";
 
 interface Announcement {
   id: number;

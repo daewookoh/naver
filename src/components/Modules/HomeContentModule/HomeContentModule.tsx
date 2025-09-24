@@ -1,7 +1,7 @@
 "use client";
 
 import { SearchOutlined } from "@ant-design/icons";
-import { DatePicker, Empty, Input, Spin, Typography, Tabs } from "antd";
+import { DatePicker, Empty, Input, Spin, Tabs } from "antd";
 import { useCallback, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useHomeContainer } from "~/containers/HomeContainer/common/hooks/useHomeContainer";

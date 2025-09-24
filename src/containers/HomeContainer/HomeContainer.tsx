@@ -15,7 +15,9 @@ export const HomeContainer = () => {
       },
     },
     autoPostButton: {
-      onClick: handleAutoPost,
+      onClick: () => {
+        void handleAutoPost();
+      },
       loading: isLoading,
     },
   };

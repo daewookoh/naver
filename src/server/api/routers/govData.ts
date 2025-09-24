@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 // YYYY-MM-DD 포맷
 function formatDate(date: Date): string {
@@ -58,7 +54,7 @@ async function fetchAnnouncements(date: string): Promise<any[]> {
     // Try to parse as JSON
     try {
       parsedData = JSON.parse(responseText);
-    } catch (error) {
+    } catch {
       console.error("Failed to parse API response as JSON:", responseText);
       throw new Error("Invalid JSON response from API");
     }
@@ -122,8 +118,6 @@ async function upsertAnnouncement(
     fileName,
     fileUrl,
     fileList,
-    attachmentList,
-    attachments,
   } = item;
 
   // 파일 정보 로깅
@@ -254,7 +248,12 @@ export const govDataRouter = createTRPCRouter({
           // DB 저장 (upsert) - 선택된 부서 key 사용
           const results = await Promise.all(
             items.map((item) =>
-              upsertAnnouncement(item, currentDate, input.departmentKey, ctx.db),
+              upsertAnnouncement(
+                item,
+                currentDate,
+                input.departmentKey,
+                ctx.db,
+              ),
             ),
           );
           const savedCount = results.filter(Boolean).length;

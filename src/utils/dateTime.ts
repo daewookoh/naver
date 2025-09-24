@@ -5,12 +5,12 @@ export function formatDateOrTime(timestamp: number) {
   const timeFormatter = new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false
+    hour12: false,
   });
 
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     month: "short",
-    day: "2-digit"
+    day: "2-digit",
   });
 
   if (date.toLocaleDateString() === now.toLocaleDateString()) {
@@ -22,12 +22,11 @@ export function formatDateOrTime(timestamp: number) {
 
 export function formatDateYear(timestamp: number) {
   const date = new Date(timestamp);
-  const now = new Date();
 
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
-    day: "2-digit"
+    day: "2-digit",
   });
 
   return dateFormatter.format(date);
