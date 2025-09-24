@@ -63,7 +63,7 @@ export const HomeContentModule = (props: Props) => {
   }, [activeTab, announcements.length]);
 
   const autoPostMutation = api.naverPost.autoPost.useMutation();
-  const departmentStatsQuery = api.announcements.getDepartmentStats.useQuery();
+  // const departmentStatsQuery = api.announcements.getDepartmentStats.useQuery();
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
