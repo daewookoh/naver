@@ -58,8 +58,37 @@ export const HomeContentModule = (props: Props) => {
     setPostingItems((prev) => new Set(prev).add(itemId));
 
     try {
+      // itemId에서 부서 정보 추출
+      const getDepartmentFromItemId = (itemId: string) => {
+        // itemId가 "departmentKey_originalId" 형태인 경우
+        if (itemId.includes("_")) {
+          const parts = itemId.split("_");
+          const departmentKey = parts[0];
+
+          // 부서 키가 유효한지 확인
+          if (departmentKey) {
+            // 부서 키에 따른 부서명 매핑
+            const departmentMap: Record<string, string> = {
+              "1421000": "중기부",
+              "1422000": "기재부",
+              "1423000": "과기부",
+              "1424000": "환경부",
+              "1425000": "보건부",
+              // 필요에 따라 추가 부서 매핑
+            };
+
+            return departmentMap[departmentKey] || "중기부"; // 기본값은 중기부
+          }
+        }
+
+        // itemId에 부서 정보가 없는 경우 기본값
+        return "중기부";
+      };
+
+      const department = getDepartmentFromItemId(itemId);
+
       // 네이버 카페 등록을 위한 데이터 준비
-      const title = item.title;
+      const title = `[${department}] ${item.title}`; // 말머리를 제목에 직접 추가
 
       // TRPC autoPost mutation 사용
       const result = await autoPostMutation.mutateAsync({
