@@ -7,6 +7,7 @@ import { useState } from "react";
 import dayjs from "dayjs";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAllDepartments } from "~/utils/departments";
+import { api } from "~/trpc/react";
 
 type Props = {
   homeContentModuleProps: React.ComponentProps<typeof HomeContentModule>;
@@ -22,6 +23,10 @@ export const HomeTemplate = (props: Props) => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectingProgress, setCollectingProgress] = useState("");
   const queryClient = useQueryClient();
+
+  // tRPC mutation for data collection
+  const syncDataMutation = api.govData.syncData.useMutation();
+  const utils = api.useUtils();
 
   return (
     <Layout style={{ height: "100%" }}>
@@ -76,12 +81,13 @@ export const HomeTemplate = (props: Props) => {
                         );
 
                         try {
-                          const response = await fetch(
-                            `/api/govData?startDate=${startDate}&departmentKey=${dept.key}`,
-                          );
-                          const result = await response.json();
+                          // tRPC mutation 사용
+                          const result = await syncDataMutation.mutateAsync({
+                            startDate: startDate,
+                            departmentKey: dept.key,
+                          });
 
-                          if (result.success) {
+                          if (result?.success) {
                             console.log(`${dept.fullName} 수집 완료:`, result);
                             totalSaved += result.totalSaved || 0;
                             if (result.processedDates) {
@@ -93,7 +99,7 @@ export const HomeTemplate = (props: Props) => {
                           } else {
                             console.error(
                               `${dept.fullName} 수집 실패:`,
-                              result.error,
+                              result?.message || "Unknown error",
                             );
                           }
                         } catch (error) {
@@ -109,9 +115,12 @@ export const HomeTemplate = (props: Props) => {
                       );
 
                       // 성공 시 announcements 쿼리 무효화하여 최신 데이터 가져오기
-                      queryClient.invalidateQueries({
+                      await queryClient.invalidateQueries({
                         queryKey: ["announcements"],
                       });
+
+                      // tRPC utils를 사용한 추가 무효화
+                      await utils.announcements.getAnnouncements.invalidate();
 
                       // 2초 후 진행 상황 메시지 초기화
                       setTimeout(() => {

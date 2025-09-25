@@ -48,6 +48,7 @@ export const HomeContentModule = (props: Props) => {
     onClear,
     dateRange,
     setDateRange,
+    isSearching,
   } = useHomeContainer(activeTab); // activeTab을 부서 키로 전달
 
   // 디버깅: activeTab 변경 시 로그 출력
@@ -156,7 +157,7 @@ export const HomeContentModule = (props: Props) => {
     );
   }
 
-  if (isLoading && !announcements.length) {
+  if (isLoading && !announcements.length && !isSearching) {
     return (
       <div className="mx-auto w-full max-w-[1200px] p-4">
         {/* 탭 영역 */}
@@ -181,15 +182,47 @@ export const HomeContentModule = (props: Props) => {
           />
         </div>
 
+        {/* 검색 바 - 항상 표시 */}
+        <div className="mb-6 rounded-lg bg-white p-4">
+          <div className="flex items-center gap-4">
+            <div className="text-sm whitespace-nowrap text-gray-600">
+              전체: <b>{totalCount}</b>건
+            </div>
+            <Input
+              placeholder="공고명을 검색하세요"
+              prefix={<SearchOutlined className="text-gray-400" />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onPressEnter={() => refetch()}
+              allowClear
+              onClear={() => {
+                onClear();
+              }}
+              className="flex-1"
+            />
+            <DatePicker
+              picker="month"
+              placeholder="신청시작일"
+              value={dateRange[0]}
+              onChange={(date) => setDateRange([date, date])}
+              format="YYYY-MM"
+              className="w-40"
+            />
+          </div>
+        </div>
+
         <div className="flex h-64 items-center justify-center">
-          <Spin size="large" tip="로딩 중..." />
+          <div className="flex flex-col items-center gap-2">
+            <Spin size="large" />
+            <span className="text-gray-500">로딩 중...</span>
+          </div>
         </div>
       </div>
     );
   }
 
-  // 해당 부서에 데이터가 없는 경우 메시지 표시
-  if (!isLoading && announcements.length === 0 && !isError) {
+  // 해당 부서에 데이터가 없는 경우 메시지 표시 (검색어가 없을 때만)
+  if (!isLoading && announcements.length === 0 && !isError && !searchTerm) {
     const departmentName = getDepartmentFullName(activeTab);
     return (
       <div className="mx-auto w-full max-w-[1200px] p-4">
@@ -209,6 +242,35 @@ export const HomeContentModule = (props: Props) => {
             }))}
             className="w-full"
           />
+        </div>
+
+        {/* 검색 바 - 항상 표시 */}
+        <div className="mb-6 rounded-lg bg-white p-4">
+          <div className="flex items-center gap-4">
+            <div className="text-sm whitespace-nowrap text-gray-600">
+              전체: <b>{totalCount}</b>건
+            </div>
+            <Input
+              placeholder="공고명을 검색하세요"
+              prefix={<SearchOutlined className="text-gray-400" />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onPressEnter={() => refetch()}
+              allowClear
+              onClear={() => {
+                onClear();
+              }}
+              className="flex-1"
+            />
+            <DatePicker
+              picker="month"
+              placeholder="신청시작일"
+              value={dateRange[0]}
+              onChange={(date) => setDateRange([date, date])}
+              format="YYYY-MM"
+              className="w-40"
+            />
+          </div>
         </div>
 
         <div className="flex h-64 items-center justify-center">
@@ -285,6 +347,13 @@ export const HomeContentModule = (props: Props) => {
         <div className="flex items-center gap-4">
           <div className="text-sm whitespace-nowrap text-gray-600">
             전체: <b>{totalCount}</b>건
+            <span className="ml-2 inline-block w-[50px] text-center">
+              {isSearching && (
+                <span className="text-blue-500">
+                  <Spin size="small" />
+                </span>
+              )}
+            </span>
           </div>
           <Input
             placeholder="공고명을 검색하세요"
@@ -317,7 +386,9 @@ export const HomeContentModule = (props: Props) => {
       >
         {announcements.length === 0 && !isLoading ? (
           <Empty
-            description="검색 결과가 없습니다."
+            description={
+              searchTerm ? "검색 결과가 없습니다." : "데이터가 없습니다."
+            }
             className="flex flex-col items-center justify-center py-12"
           />
         ) : (
@@ -372,7 +443,9 @@ export const HomeContentModule = (props: Props) => {
                     </td>
                     <td className="p-2 text-center">
                       <div className="mb-2">
-                        {item.regDate?.slice(0, 10) || "-"}
+                        {item.regDate
+                          ? new Date(item.regDate).toISOString().slice(0, 10)
+                          : "-"}
                       </div>
                       {session ? (
                         <button
@@ -404,7 +477,10 @@ export const HomeContentModule = (props: Props) => {
 
         {isFetchingNextPage && (
           <div className="mt-6 flex justify-center">
-            <Spin tip="로딩 중..." />
+            <div className="flex items-center gap-2">
+              <Spin />
+              <span className="text-gray-500">로딩 중...</span>
+            </div>
           </div>
         )}
 

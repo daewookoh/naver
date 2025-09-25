@@ -2,32 +2,28 @@
  * 정부 부서 정보 및 매핑 유틸리티
  */
 
+// 중소벤처기업부 API 관련 상수
+export const FULL_URL_1421000 =
+  "https://apis.data.go.kr/1421000/mssBizService_v2/getbizList_v2";
+
 // 부서 키에 따른 부서명 매핑
 export const DEPARTMENT_MAP: Record<string, string> = {
   "1421000": "중기부",
-  //   "1422000": "산자부",
-  //   "1423000": "과기부",
-  //   "1424000": "환경부",
-  //   "1425000": "보건부",
-  // 필요에 따라 추가 부서 매핑
 };
 
 // 부서 키에 따른 전체 부서명 매핑
 export const DEPARTMENT_FULL_NAMES: Record<string, string> = {
   "1421000": "중소벤처기업부",
-  //   "1422000": "산업통상자원부",
-  //   "1423000": "과학기술정보통신부",
-  //   "1424000": "환경부",
-  //   "1425000": "보건복지부",
 };
 
 // 부서명에 따른 부서 키 매핑 (역방향)
 export const DEPARTMENT_KEYS: Record<string, string> = {
   중기부: "1421000",
-  //   산자부: "1422000",
-  //   과기부: "1423000",
-  //   환경부: "1424000",
-  //   보건부: "1425000",
+};
+
+// 부서별 API 엔드포인트 매핑
+export const DEPARTMENT_API_ENDPOINTS: Record<string, string> = {
+  "1421000": FULL_URL_1421000,
 };
 
 /**
@@ -86,4 +82,13 @@ export function getAllDepartments() {
  */
 export function isValidDepartmentKey(departmentKey: string): boolean {
   return departmentKey in DEPARTMENT_MAP;
+}
+
+/**
+ * 부서 키로 API 엔드포인트를 가져오는 함수
+ */
+export function getDepartmentApiEndpoint(departmentKey: string): string {
+  return (
+    DEPARTMENT_API_ENDPOINTS[departmentKey] || "/mssBizService_v2/getbizList_v2"
+  );
 }

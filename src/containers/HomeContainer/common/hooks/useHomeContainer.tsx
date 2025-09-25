@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useState, useCallback, useEffect } from "react";
 import dayjs from "dayjs";
+import { api } from "~/trpc/react";
 
 interface Announcement {
   id: number;
@@ -24,104 +24,53 @@ interface Announcement {
   updatedAt: string;
 }
 
-interface ApiResponse {
-  success: boolean;
-  data: Announcement[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNextPage: boolean;
-  };
-}
-
 export const useHomeContainer = (departmentKey?: string) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<
     [dayjs.Dayjs | null, dayjs.Dayjs | null]
   >([null, null]);
   const [isAutoPosting, setIsAutoPosting] = useState(false);
 
-  const fetchAnnouncements = async ({
-    pageParam = 1,
-  }): Promise<ApiResponse> => {
-    // TRPC는 직접 호출이 아닌 useQuery를 사용해야 함
-    // 임시로 기존 API 호출 방식으로 되돌림
-    const params = new URLSearchParams({
-      page: pageParam.toString(),
-      limit: "30",
-    });
+  // 1.2초 debounce 로직
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 1200);
 
-    if (searchTerm) {
-      const cleanSearchTerm = searchTerm.trim();
-      if (cleanSearchTerm) {
-        params.append("search", cleanSearchTerm);
-        console.log("Search term:", cleanSearchTerm);
-      }
-    }
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-    if (dateRange[0] && dateRange[1]) {
-      params.append("startDate", dateRange[0].format("YYYY-MM-DD"));
-      params.append("endDate", dateRange[1].format("YYYY-MM-DD"));
-    }
-
-    if (departmentKey) {
-      params.append("departmentKey", departmentKey);
-      console.log("=== FRONTEND API CALL ===");
-      console.log("Department key being sent:", departmentKey);
-      console.log("Department key type:", typeof departmentKey);
-      console.log("Department key length:", departmentKey.length);
-      console.log("Department key validation:", {
-        key: departmentKey,
-        isValid: departmentKey === "1421000" || departmentKey === "1422000",
-      });
-    } else {
-      console.log("=== NO DEPARTMENT KEY ===");
-      console.log("No departmentKey provided to API call");
-    }
-
-    const url = `/api/announcements?${params.toString()}`;
-    console.log("Fetching URL:", url);
-    console.log("Full params:", Object.fromEntries(params.entries()));
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error("Failed to fetch announcements");
-    }
-    const result = await response.json();
-    console.log("API Response:", result);
-    return result;
-  };
-
+  // tRPC를 사용한 공고 데이터 조회
   const {
-    data,
-    isLoading,
-    isError,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch,
-  } = useInfiniteQuery({
-    queryKey: ["announcements", searchTerm, dateRange, departmentKey],
-    queryFn: fetchAnnouncements,
-    enabled: !!departmentKey, // departmentKey가 있을 때만 쿼리 실행
-    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
-    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
-    getNextPageParam: (lastPage) => {
-      return lastPage.pagination.hasNextPage
-        ? lastPage.pagination.page + 1
-        : undefined;
+    data: tRPCData,
+    isLoading: tRPCLoading,
+    isError: tRPCError,
+    error: tRPCErrorData,
+    refetch: tRPCRefetch,
+    isFetching: isSearching,
+  } = api.announcements.getAnnouncements.useQuery(
+    {
+      page: 1,
+      limit: 30,
+      search: debouncedSearchTerm || undefined,
+      startDate: dateRange[0]?.format("YYYY-MM-DD"),
+      endDate: dateRange[1]?.format("YYYY-MM-DD"),
+      departmentKey: departmentKey,
     },
-    initialPageParam: 1,
-  });
+    {
+      enabled: !!departmentKey,
+      staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
+      gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+    },
+  );
 
-  const announcements = data?.pages.flatMap((page) => page.data) || [];
-  const totalCount = data?.pages[0]?.pagination?.total || 0;
+  const announcements = tRPCData?.data || [];
+  const totalCount = tRPCData?.pagination?.total || 0;
 
   const onClear = useCallback(() => {
     setSearchTerm("");
+    setDebouncedSearchTerm("");
     setDateRange([null, null]);
   }, []);
 
@@ -148,18 +97,19 @@ export const useHomeContainer = (departmentKey?: string) => {
     searchTerm,
     setSearchTerm,
     announcements,
-    isLoading,
-    isError,
-    error,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-    refetch,
+    isLoading: tRPCLoading,
+    isError: tRPCError,
+    error: tRPCErrorData,
+    isFetchingNextPage: false,
+    hasNextPage: false,
+    fetchNextPage: () => {},
+    refetch: tRPCRefetch,
     totalCount,
     onClear,
     dateRange,
     setDateRange,
     handleAutoPost,
     isAutoPosting,
+    isSearching, // 검색 중 상태 추가
   };
 };

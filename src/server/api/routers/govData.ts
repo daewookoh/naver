@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   isValidDepartmentKey,
   getDepartmentFullName,
+  DEPARTMENT_API_ENDPOINTS,
 } from "~/utils/departments";
 
 // YYYY-MM-DD 포맷
@@ -24,10 +25,9 @@ async function fetchAnnouncements(
   date: string,
   departmentKey: string,
 ): Promise<any[]> {
-  // departmentKey에 따라 API URL 구성
-  // 실제 API는 부서별로 다른 엔드포인트가 아닐 수 있음
-  // 부서 정보를 파라미터로 전달하는 방식으로 변경
-  const apiUrl = `https://apis.data.go.kr/1421000/mssBizService_v2/getbizList_v2?serviceKey=${process.env.NEXT_PUBLIC_DATA_GO_KR_SERVICE_KEY}&pageNo=1&numOfRows=100&startDate=${date}&endDate=${date}&departmentKey=${departmentKey}`;
+  // API URL 구성 (부서별 동적 구성)
+  const apiEndpoint = DEPARTMENT_API_ENDPOINTS[departmentKey];
+  const apiUrl = `${apiEndpoint}?serviceKey=${process.env.NEXT_PUBLIC_DATA_GO_KR_SERVICE_KEY}&pageNo=1&numOfRows=100&startDate=${date}&endDate=${date}`;
   console.log("=== API CALL DEBUG ===");
   console.log("Department Key:", departmentKey);
   console.log("API URL:", apiUrl);
@@ -115,7 +115,7 @@ async function fetchAnnouncements(
 async function upsertAnnouncement(
   item: any,
   regDate: Date,
-  departmentKey = "1421000",
+  departmentKey: string,
   db: any,
 ) {
   if (!item?.itemId) return null;
@@ -276,6 +276,7 @@ export const govDataRouter = createTRPCRouter({
         try {
           // API 호출 - departmentKey 전달
           const items = await fetchAnnouncements(dateStr, input.departmentKey);
+
           // DB 저장 (upsert) - 선택된 부서 key 사용
           const results = await Promise.all(
             items.map((item) =>
